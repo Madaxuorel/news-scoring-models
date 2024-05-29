@@ -94,5 +94,7 @@ def newsLineToScore(news,model):
     model = load_model("../cnn-models/sentimentModel.keras")
   elif model == 'LSTM':
     model = load_model("../lstm-models/sentimentModel_lstm.keras")
+  elif model == 'LSTM-word2vec':
+    model = load_model("../word2vec-lstm-models/sentimentModel_word2vec_lstm.keras")
       
   return  list(pd.DataFrame(model.predict(tokenizedNewsLine_padded)).apply(lambda x:-1*x[0]+ 1*x[2],axis=1))
