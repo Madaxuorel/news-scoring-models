@@ -24,6 +24,8 @@ nltk.download('omw-1.4')
 nltk.download('stopwords')
 
 
+def removeHtmlWords(text):
+    return re.sub(r'https:\/\/[^\s]+', '', text)
 
 def strip_html_tags(text):
   """
@@ -57,6 +59,7 @@ def pre_process_corpus(docs):
     doc = doc.lower()
     #remove special characters\whitespaces
     doc = strip_html_tags(doc)
+    doc = removeHtmlWords(doc)
     doc = doc.translate(doc.maketrans("\n\t\r", "   "))
     doc = remove_accented_chars(doc)
     doc = contractions.fix(doc)
@@ -74,22 +77,22 @@ def pre_process_corpus(docs):
 
 
 
-def newsLineToScore(news):
+def newsLineToScore(news,model):
   """
   Array of news lines to array of sentiment scores
   """
   processedNewsLine = pre_process_corpus(news)
-  
+  print(processedNewsLine)
   with open('../cnn-models/tokenizer.pickle', 'rb') as handle:
     tokenizer = pickle.load(handle)
   
   tokenizedNewsLine = tokenizer.texts_to_sequences(processedNewsLine)
-
+  print(tokenizedNewsLine)
   MAX_LENGTH = 47
   tokenizedNewsLine_padded = pad_sequences(tokenizedNewsLine, maxlen=MAX_LENGTH, padding="post")
-  
-  model = load_model("../cnn-models/sentimentModel.keras")
-  
-  predictions = model.predict(tokenizedNewsLine_padded)
-  
+  if model == 'CNN':
+    model = load_model("../cnn-models/sentimentModel.keras")
+  elif model == 'LSTM':
+    model = load_model("../lstm-models/sentimentModel_lstm.keras")
+      
   return  list(pd.DataFrame(model.predict(tokenizedNewsLine_padded)).apply(lambda x:-1*x[0]+ 1*x[2],axis=1))
