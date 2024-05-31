@@ -15,6 +15,8 @@ from tensorflow.keras.preprocessing.sequence import pad_sequences
 from keras.models import load_model
 
 import pickle
+from datetime import datetime
+import numpy as np
 
 
 
@@ -83,7 +85,7 @@ def newsLineToScore(news,model):
   """
   processedNewsLine = pre_process_corpus(news)
   print(processedNewsLine)
-  with open('../cnn-models/tokenizer.pickle', 'rb') as handle:
+  with open('/home/adam/Documents/perso/news-scoring-models/word2vec-lstm-models/tokenizer_word2vec.pickle', 'rb') as handle:
     tokenizer = pickle.load(handle)
   
   tokenizedNewsLine = tokenizer.texts_to_sequences(processedNewsLine)
@@ -95,6 +97,47 @@ def newsLineToScore(news,model):
   elif model == 'LSTM':
     model = load_model("../lstm-models/sentimentModel_lstm.keras")
   elif model == 'LSTM-word2vec':
-    model = load_model("../word2vec-lstm-models/sentimentModel_word2vec_lstm.keras")
+    model = load_model("/home/adam/Documents/perso/news-scoring-models/word2vec-lstm-models/sentimentModel_word2vec_lstm.keras")
       
   return  list(pd.DataFrame(model.predict(tokenizedNewsLine_padded)).apply(lambda x:-1*x[0]+ 1*x[2],axis=1))
+
+
+def dateScore(date):
+  """
+    Calculate the weight for a given date based on its age compared to today.
+    Args:
+    date (datetime): The date to calculate the weight for.
+    today (datetime): The current date to compare against.
+
+    Returns:
+    float: The calculated weight for the given date.
+  """
+  today = datetime.utcnow()
+  age_in_days = (today - date).days
+  weight = np.exp(-age_in_days / 180)  # Exponential decay with a half-life of about 180 days
+  return weight
+
+def calculate_final_scores(headlines_dict):
+    headlines = list(headlines_dict.keys())
+    dates = list(headlines_dict.values())
+    
+    # Get the headline scores
+    headline_scores = newsLineToScore(headlines,model='LSTM-word2vec')
+    
+    # Get the date scores
+    date_scores = [dateScore(date) for date in dates]
+    
+    # Calculate final scores
+    final_scores = [h_score * d_score for h_score, d_score in zip(headline_scores, date_scores)]
+    
+    # Sum the final scores to get the overall score
+    overall_score = sum(final_scores)
+    
+    # Print detailed information
+    for headline, h_score, d_score, f_score in zip(headlines, headline_scores, date_scores, final_scores):
+        print(f"Headline: {headline}")
+        print(f"Headline Score: {h_score}")
+        print(f"Date Score: {d_score}")
+        print(f"Final Score: {f_score}\n")
+    
+    return overall_score
